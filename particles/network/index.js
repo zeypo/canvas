@@ -1,5 +1,3 @@
-'use strict';
-
 var c = document.getElementById('canvas');
 var ctx = c.getContext('2d');
     c.height = window.innerHeight;
@@ -8,18 +6,43 @@ var ctx = c.getContext('2d');
 var Constelation = function Constelation() {
 
     var _this = this;
-
-    this.config = {
-        length   : 200,
+    var config = {
+        length   : 1000,
         velocity : 0.1,
-        radius   : 1
+        radius   : 150,
+        maxnodes : 5,
+        position : {
+            x : 0,
+            y : 0
+        },
+        distance : 50,
+        colors : [
+            [
+                '26, 188, 156',
+                '22, 160, 133',
+                '46, 204, 113',
+                '39, 174, 96'
+            ],
+            [
+                '192, 57, 43',
+                '192, 57, 43'
+            ]
+        ]
     };
+
     this.stars = [];
 
     this.init = function init() {
-
+        _this.setInitialPosition();
         _this.createStars();
         _this.loop();
+    };
+
+    this.setInitialPosition = function() {
+        config.position = {
+            x : c.width * 0.5,
+            y : c.height * 0.5
+        };
     };
 
     this.update = function update() {
@@ -37,23 +60,21 @@ var Constelation = function Constelation() {
             _this.stars[i].draw();
         }
 
-    };
+        _this.stars[0].line();
 
-    this.createStars = function createStars() {
-        for (var i = 0; i < _this.config.length; i++) {
-            _this.stars.push(new Star());
-            var star = _this.stars[i];
-
-            star.draw();
-        }
     };
 
     function Star() {
-        this.x  = Math.random() * c.width;
-        this.y  = Math.random() * c.height;
-        this.r  = Math.random() * _this.config.radius;
-        this.vx = (_this.config.velocity - (Math.random() * 0.5));
-        this.vy = (_this.config.velocity - (Math.random() * 0.5));
+        var palette = 1;
+        var color   = Math.floor(Math.random() * config.colors[palette].length);
+
+        this.x      = Math.random() * c.width;
+        this.y      = Math.random() * c.height;
+        this.r      = Math.random();
+        this.vx     = (config.velocity - (Math.random() * 0.5));
+        this.vy     = (config.velocity - (Math.random() * 0.5));
+        this.color  = 'rgba(' + config.colors[palette][color] + ', ' + Math.random() + ')';
+        this.nodes  = 0;
     }
 
     Star.prototype = {
@@ -61,6 +82,8 @@ var Constelation = function Constelation() {
         draw : function() {
             ctx.beginPath();
             ctx.fillStyle = '#fff';
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = 10;
             ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
             ctx.closePath();
             ctx.fill();
@@ -78,12 +101,57 @@ var Constelation = function Constelation() {
                 this.vx = -this.vx;
                 this.vy = this.vy;
             }
+
+            this.nodes = 0;
         },
 
         line : function() {
 
-            //for (var i = 0; i < _this.config.)
+            for (i = 0; i < config.length; i++) {
+                for (j = 0; j < config.length; j++) {
+                    iStar = _this.stars[i];
+                    jStar = _this.stars[j];
+
+                    if (
+                        (iStar.x - jStar.x) < config.distance &&
+                        (iStar.y - jStar.y) < config.distance &&
+                        (iStar.x - jStar.x) > - config.distance &&
+                        (iStar.y - jStar.y) > - config.distance
+                    ) {
+                        if (
+                            (iStar.x - config.position.x) < config.radius &&
+                            (iStar.y - config.position.y) < config.radius &&
+                            (iStar.x - config.position.x) > - config.radius &&
+                            (iStar.y - config.position.y) > - config.radius &&
+                            iStar.nodes < config.maxnodes //&& jStar.nodes < config.maxnodes
+                        ) {
+                            var color = Math.floor(Math.random() * config.colors.length);
+                            ctx.beginPath();
+                            ctx.strokeStyle = iStar.color;
+                            ctx.moveTo(iStar.x, iStar.y);
+                            ctx.lineTo(jStar.x, jStar.y);
+                            ctx.stroke();
+                            ctx.closePath();
+
+                            _this.stars[i].nodes++;
+                            _this.stars[j].nodes++;
+                        }
+                    }
+                }
+            }
         }
+    };
+
+    this.createStars = function createStars() {
+        var star;
+
+        for (var i = 0; i < config.length; i++) {
+            _this.stars.push(new Star());
+            star = _this.stars[i];
+            star.draw();
+        }
+
+        star.line();
     };
 
     this.loop = function loop() {
@@ -101,7 +169,19 @@ var Constelation = function Constelation() {
         window.requestAnimationFrame(_this.loop);
     };
 
+    this.updatePosition = function updatePosition(e) {
+        config.position = {
+            x : e.clientX,
+            y : e.clientY
+        };
+    };
+
 };
 
 var constelation = new Constelation();
+
 constelation.init();
+
+window.addEventListener('mousemove', function(e) {
+    constelation.updatePosition(e);
+});
